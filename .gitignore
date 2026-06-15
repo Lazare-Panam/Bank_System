@@ -1,0 +1,28 @@
+# Build outputs
+bin/
+obj/
+
+# .NET
+*.user
+*.suo
+.vs/
+*.userprefs
+
+# Rider
+.idea/
+
+# VS Code
+.vscode/
+
+# macOS
+.DS_Store
+
+# Test results
+TestResults/
+coverage/
+*.coverage
+*.coveragexml
+
+# NuGet
+*.nupkg
+packages/
