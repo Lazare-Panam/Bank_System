@@ -3,13 +3,12 @@ using Models;
 public class AccountService
 {
     List<Account> accounts = new List<Account>();
-
     private Account FindAccount(Guid id)
     {
         var account = accounts.FirstOrDefault(x=>x.Id==id);
         if(account==null)
         {
-            throw new ArgumentNullException("Account does not exist", nameof(account));
+            throw new AccountNotFoundException("Account does not exist", id);
         }
         return account;
     }
@@ -51,7 +50,8 @@ public class AccountService
             Id = Guid.NewGuid(),
             HolderName = accountDTO.HolderName,
             Balance = balance,
-            AccountType = accountDTO.AccountType
+            AccountType = accountDTO.AccountType,
+            DateCreated = accountDTO.DateCreated 
         };
         accounts.Add(account);
         return account.Id;
@@ -68,6 +68,7 @@ public class AccountService
     { 
         decimal balance = ValidateAccountBalanceUpdateDetials(id,bal);
         var account = FindAccount(id);
+        //exception handler here
         if(balance > account.Balance)
             throw new AccountBalanceException($"Insufficient funds. Shortfall: {balance - account.Balance}", bal);
         account.Balance-=balance;
