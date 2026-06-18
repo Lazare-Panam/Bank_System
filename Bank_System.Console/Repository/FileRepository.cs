@@ -7,7 +7,6 @@ public class FileRepository <T>: IDisposable, IAsyncDisposable, IRepository<T> w
     private readonly string _filePath;
     private List<T> _items;
     private bool _disposed = false;
-    private IAsyncDisposable? _example;
     public void Dispose()
     {
         Dispose(true);
@@ -52,7 +51,7 @@ public class FileRepository <T>: IDisposable, IAsyncDisposable, IRepository<T> w
             _items = new List<T>();
         }
     }
-    private async Task SaveChangesAsync()
+    private async Task SaveChangesAsync(CancellationToken ct = default)
     {
         var options = new JsonSerializerOptions
         {
@@ -92,6 +91,30 @@ public class FileRepository <T>: IDisposable, IAsyncDisposable, IRepository<T> w
         _items.RemoveAll(x => x.Id == id);
         SaveChanges();
     }
+
+    public async Task AddAsync(T entity, CancellationToken ct = default)
+    {
+        _items.Add(entity);
+        await SaveChangesAsync(ct).ConfigureAwait(false);
+    }
+
+    public Task<T?> GetByIdAsync(Guid id, CancellationToken ct = default)
+    {
+       var item = _items.FirstOrDefault(x => x.Id == id);
+        return Task.FromResult(item);
+    }
+
+    public Task<IEnumerable<T>> GetAllAsync(CancellationToken ct = default)
+    {
+        return Task.FromResult(_items.AsEnumerable());
+    }
+
+    public async Task DeleteAsync(Guid id, CancellationToken ct = default)
+    {
+        _items.RemoveAll(x => x.Id == id);
+        await SaveChangesAsync(ct).ConfigureAwait(false);
+    }
+
     ~FileRepository()
     {
         Dispose(false);

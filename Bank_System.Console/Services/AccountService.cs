@@ -1,5 +1,6 @@
 using Exceptions;
 using Models;
+using System.Runtime.CompilerServices;
 public class AccountService : IAccountService
 {
     private readonly IRepository<Account> _repository;
@@ -37,7 +38,7 @@ public class AccountService : IAccountService
         }
         return balance;
     }
-    public Guid CreateUserAccount(AccountCreatorDTO accountDTO)
+    public async Task<Guid> CreateUserAccountAsync(AccountCreatorDTO accountDTO, CancellationToken ct = default)
     {
         decimal balance = ValidateAccountCreationInput(accountDTO);
         Account account = new Account
@@ -48,13 +49,13 @@ public class AccountService : IAccountService
             AccountType = accountDTO.AccountType,
             DateCreated = accountDTO.DateCreated 
         };
-        _repository.Add(account);
+        await _repository.AddAsync(account, ct);
         return account.Id;
     }
-    public decimal IncreaseAccountBalance(Guid id, string bal)
+    public async Task<decimal> IncreaseAccountBalanceAsync(Guid id, string bal, CancellationToken ct = default)
     {
         decimal balance = ValidateAccountBalanceUpdateDetials(id,bal);
-        var account = _repository.GetById(id);
+        var account = await _repository.GetByIdAsync(id);
         if (account == null) 
         {
             throw new ArgumentException($"Account with ID {id} not found.", nameof(id));
@@ -71,12 +72,12 @@ public class AccountService : IAccountService
         return account.Balance;
     }
 
-    public decimal DecreaseAccountBalance(Guid id, string bal)
+    public async Task<decimal> DecreaseAccountBalanceAsync(Guid id, string bal, CancellationToken ct = default)
     { 
         decimal balance = ValidateAccountBalanceUpdateDetials(id,bal);
-        var account = _repository.GetById(id);
+        var account = await _repository.GetByIdAsync(id);
         if (account == null)
-        {
+        {   
             throw new ArgumentException($"Account with ID {id} not found.", nameof(id));
         }
         if (account.Balance < balance)
@@ -94,46 +95,48 @@ public class AccountService : IAccountService
         account.Transactions.Add(transaction);
         return account.Balance;
     }
-
-    public List<TransactionHistory> GetTransactionHistory(Guid id)
+    public async IAsyncEnumerable<TransactionHistory> GetTransactionHistoryAsync(Guid id, [EnumeratorCancellation] CancellationToken ct = default)
     {
-        var account  = _repository.GetById(id);
+        var account = await _repository.GetByIdAsync(id,ct);
         if (account == null)
         {
             throw new ArgumentException($"Account with ID {id} not found.", nameof(id));
         }
-        return account.Transactions;
+        foreach (var transaction in account.Transactions)
+        {
+            await Task.Delay(1000);
+            yield return transaction;
+        }
     }
-
-    public Account GetAccountDetailsById(Guid id)
+    public async Task<Account> GetAccountDetailsByIdAsync(Guid id, CancellationToken ct = default)
     {
-        var account = _repository.GetById(id);
+        var account = await _repository.GetByIdAsync(id, ct);
         if (account == null)
         {
             throw new ArgumentException($"Account with ID {id} not found.", nameof(id));
         }
         return account;
     }
-    public IEnumerable<Account> GetAllAccounts()
+    public async Task<IEnumerable<Account>> GetAllAccountsAsync(CancellationToken ct = default)
     {
-        return _repository.GetAll();
+        return await _repository.GetAllAsync(ct);
     }
-
-    public FinancialModel GetFinancialReport()
+    public async Task<FinancialModel> GetFinancialReportAsync(CancellationToken ct)
     {
-        var accounts = _repository.GetAll().ToList();
-        if(accounts == null || accounts.Count == 0)
+        var accounts = await _repository.GetAllAsync(ct);
+        var accountsList = accounts.ToList();
+        if (accountsList == null || accountsList.Count == 0)
         {
             throw new ArgumentException($"No accounts found.");
         }
-        var totalAccoutns = accounts.Count;
-        var savingsAccounts = accounts.Count(x => x.AccountType == AccountType.Savings);
-        var currentAccounts = accounts.Count(x => x.AccountType == AccountType.Current);
-        var totalBalance = accounts.Sum(x => x.Balance);
-        var highestBalanceId = accounts.MaxBy(x => x.Balance).Id;
-        var lowestBalanceId = accounts.MinBy(x => x.Balance).Id;
+        var totalAccoutns = accountsList.Count;
+        var savingsAccounts = accountsList.Count(x => x.AccountType == AccountType.Savings);
+        var currentAccounts = accountsList.Count(x => x.AccountType == AccountType.Current);
+        var totalBalance = accountsList.Sum(x => x.Balance);
+        var highestBalanceId = accountsList.MaxBy(x => x.Balance).Id;
+        var lowestBalanceId = accountsList.MinBy(x => x.Balance).Id;
 
-        var totalTansactions = accounts.Sum(x => x.Transactions.Count);
+        var totalTansactions = accountsList.Sum(x => x.Transactions.Count);
         return new FinancialModel
         {
             TotalAccounts = totalAccoutns,
