@@ -54,5 +54,29 @@
     "AccountType": 0,
     "DateCreated": "0001-01-01T00:00:00+00:00",
     "Transactions": []
+  },
+  {
+    "Id": "0e0d9a9b-ae51-4e53-b6f1-a32beb78cc20",
+    "HolderName": "Rishik",
+    "Balance": 123456,
+    "AccountType": 0,
+    "DateCreated": "0001-01-01T00:00:00+00:00",
+    "Transactions": []
+  },
+  {
+    "Id": "92ff7617-cd77-4f2c-b1ef-2c339ca76e96",
+    "HolderName": "R",
+    "Balance": 1232,
+    "AccountType": 1,
+    "DateCreated": "0001-01-01T00:00:00+00:00",
+    "Transactions": []
+  },
+  {
+    "Id": "2ff470c6-7ac2-4bf0-86da-f1e78e317b91",
+    "HolderName": "Ri",
+    "Balance": 1231231,
+    "AccountType": 1,
+    "DateCreated": "0001-01-01T00:00:00+00:00",
+    "Transactions": []
   }
 ]

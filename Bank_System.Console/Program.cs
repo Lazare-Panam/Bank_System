@@ -1,4 +1,6 @@
-﻿using Exceptions;
+﻿using Delegates;
+using Events;
+using Exceptions;
 using Extensions;
 using Models;
 using Repository;
@@ -42,12 +44,22 @@ class Bank_System
             Console.WriteLine($"An unexpected error occurred: {ex.Message}");
         }
     }
-    public static async Task Main(String []args)
+    public static void Logger(string message)
+    {
+        Console.WriteLine(message);
+    }
+    public static async Task Main(String[] args)
     {
         var tokenSource = new CancellationTokenSource();
         string path = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "accounts.json");
         IRepository<Account> repository = new FileRepository<Account>(path);
-        IAccountService accountService = new AccountService(repository);
+        TransactionEvent transactionEvent = new TransactionEvent();
+        LowBalanceEvent lowBalanceEvent = new LowBalanceEvent();
+        Action<string> _logger = Logger;
+        IAccountService accountService = new AccountService(repository, transactionEvent, lowBalanceEvent, _logger);
+        AccountAction action = ActionHandler.ShowBalance;
+        action += ActionHandler.ShowAccountType;
+
         Bank_System bank_System = new Bank_System();
         Console.CancelKeyPress += (sender, eventArgs) =>
         {
@@ -55,7 +67,15 @@ class Bank_System
             tokenSource.Cancel();
             eventArgs.Cancel = true;
         };
-        await Task.WhenAll(bank_System.GetExchangeRateAsync(), bank_System.ViewAllAccountsAsync(accountService, tokenSource.Token));
+        transactionEvent.TransactionOccurred += (sender, eventArgs) =>
+        {
+            Console.WriteLine($"Transaction occurred: Account ID: {eventArgs.AccountId}, Amount: {eventArgs.Amount}, Type: {eventArgs.TransactionType}, Total Balance: {eventArgs.TotalBalance}");
+        };
+        lowBalanceEvent.LowBalanceOccured += (sender, eventArgs) =>
+        {
+            Console.WriteLine($"Low balance detected: Account ID: {eventArgs.Id}, Balance: {eventArgs.Balance}");
+        };
+        //await Task.WhenAll(bank_System.GetExchangeRateAsync(), bank_System.ViewAllAccountsAsync(accountService, tokenSource.Token));
         while (true)
         {
             Console.WriteLine("1. Create account");
@@ -65,15 +85,19 @@ class Bank_System
             Console.WriteLine("5.  View Account Details");
             Console.WriteLine("6. View All Accounts");
             Console.WriteLine("7. View Fianancial Model");
-            Console.WriteLine("8. Exit");
-            
-            if(!int.TryParse(Console.ReadLine(), out int num))
+            Console.WriteLine("8. Run Account Action");
+            Console.WriteLine("9. Exit");
+            if (tokenSource.Token.IsCancellationRequested)
+            {
+                Console.WriteLine("Operation cancelled.");
+                break;
+            }
+            if (!int.TryParse(Console.ReadLine(), out int num))
             {
                 Console.WriteLine("Invalid option, try again");
                 continue;
             }
-
-            if (num == 8) 
+            if (num == 9) 
                 break;
             switch(num)
             {
@@ -83,7 +107,6 @@ class Bank_System
                 case 2:
                     await bank_System.DepositMoneyAsync(accountService, tokenSource.Token);
                     break;
-
                 case 3:
                     await bank_System.WithdrawMoneyAsync(accountService, tokenSource.Token);
                     break;    
@@ -98,6 +121,9 @@ class Bank_System
                     break;
                 case 7:
                     await bank_System.ViewFinancialModelAsync(accountService, tokenSource.Token);
+                    break;
+                case 8:
+                    bank_System.RunAccountAction(accountService, action);
                     break;
             }
         }
@@ -128,7 +154,6 @@ class Bank_System
                 AccountType = accountType
             };
             var id = await accountService.CreateUserAccountAsync(accountDTO, cancellationToken);
-            Console.WriteLine($"Account created successfully. ID: {id}");        
         }
         catch(ArgumentNullException ex)
         {
@@ -316,6 +341,17 @@ class Bank_System
         catch (Exception ex)
         {
             Console.WriteLine($"Exception occured: {ex.Message}");
+        }
+    }
+    public void RunAccountAction(IAccountService accountService, AccountAction accountAction)
+    {
+        try
+        {
+            accountService.RunAccountAction(accountAction);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Exception occurred while running account action: {ex.Message}");
         }
     }
 }

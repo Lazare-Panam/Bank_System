@@ -1,3 +1,4 @@
+using Delegates;
 using Models;
 using System.Runtime.CompilerServices;
 
@@ -10,4 +11,5 @@ public interface IAccountService
     Task<Account> GetAccountDetailsByIdAsync(Guid id, CancellationToken ct = default);
     Task<IEnumerable<Account>> GetAllAccountsAsync(CancellationToken ct = default);
     Task<FinancialModel> GetFinancialReportAsync(CancellationToken ct = default);
+    void RunAccountAction(AccountAction accountAction);
 }

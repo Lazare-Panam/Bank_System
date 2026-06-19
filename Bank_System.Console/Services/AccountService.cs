@@ -1,12 +1,20 @@
+using Delegates;
+using Events;
 using Exceptions;
 using Models;
 using System.Runtime.CompilerServices;
 public class AccountService : IAccountService
 {
     private readonly IRepository<Account> _repository;
-    public AccountService(IRepository<Account>repository)
+    private readonly TransactionEvent _transactionEvent;
+    private readonly LowBalanceEvent _lowBalanceEvent;
+    private readonly Action<string> _logger;
+    public AccountService(IRepository<Account>repository, TransactionEvent transactionEvent, LowBalanceEvent lowBalanceEvent, Action<string> logger)
     {
         _repository = repository;
+        _transactionEvent = transactionEvent;
+        _lowBalanceEvent = lowBalanceEvent;
+        _logger = logger;
     }
     private decimal ValidateAccountCreationInput(AccountCreatorDTO accountCreatorDTO)
     {
@@ -50,6 +58,7 @@ public class AccountService : IAccountService
             DateCreated = accountDTO.DateCreated 
         };
         await _repository.AddAsync(account, ct);
+        _logger($"Log:Information, Account created with ID: {account.Id}");
         return account.Id;
     }
     public async Task<decimal> IncreaseAccountBalanceAsync(Guid id, string bal, CancellationToken ct = default)
@@ -69,6 +78,7 @@ public class AccountService : IAccountService
             Balance = account.Balance
         };
         account.Transactions.Add(transaction);
+        _transactionEvent.OnTransactionOccurred(account.Id, balance, TransactionType.Deposit, account.Balance);
         return account.Balance;
     }
 
@@ -93,6 +103,11 @@ public class AccountService : IAccountService
             Balance = account.Balance
         };
         account.Transactions.Add(transaction);
+        _transactionEvent.OnTransactionOccurred(account.Id, balance, TransactionType.Withdraw, account.Balance);
+        if(account.Balance < 100)
+        {
+            _lowBalanceEvent.OnLowBalanceOccured(account.Id, balance, TransactionType.Withdraw, account.Balance);
+        }
         return account.Balance;
     }
     public async IAsyncEnumerable<TransactionHistory> GetTransactionHistoryAsync(Guid id, [EnumeratorCancellation] CancellationToken ct = default)
@@ -147,5 +162,13 @@ public class AccountService : IAccountService
             LowestBalanceId = lowestBalanceId,
             TotalTransactions = totalTansactions
         };
+    }
+    public void RunAccountAction(AccountAction accountAction)
+    {
+        var accounts = _repository.GetAll();
+        foreach (var account in accounts)
+        {
+            accountAction(account);
+        }
     }
 }
