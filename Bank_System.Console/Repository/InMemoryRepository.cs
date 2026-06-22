@@ -48,5 +48,17 @@ namespace Repository
             await Task.Delay(100);
             _items.RemoveAll(x => x.Id == id);
         }
+
+        public void Update(T entity)
+        {
+           var item = _items.FirstOrDefault(x => x.Id == entity.Id);
+           _items.Remove(item);
+                _items.Add(entity);
+        }
+
+        public Task UpdateAsync(T entity, CancellationToken ct = default)
+        {
+            throw new NotImplementedException();
+        }
     }
 }
